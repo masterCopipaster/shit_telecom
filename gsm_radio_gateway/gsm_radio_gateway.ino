@@ -1,6 +1,7 @@
 #include "MT8870.h"
 #include "dtmf_command_protocol.h"
 #include "rms.h"
+#include "ht9200.h"
 
 #include <GSMSimCall.h>
 #include <GSMSimSMS.h>
@@ -14,23 +15,18 @@ SoftwareSerial SIM800(8, 9);   // RX, TX
 GSMSimCall call(SIM800, 12); // GSMSimCall inherit from GSMSim. You can use GSMSim methods with it.
 GSMSimSMS sms(SIM800, 12);
 
+ht9200 dtmf_out(A3, A4, A2);
+
 //#define LEVELS_DEBUG
 
 #define PTT_PIN 11
-#define RMS_FAST_ALPHA 0.95
-#define RMS_NORMAL_ALPHA 0.95
-#define RMS_SLOW_ALPHA 0.9995
+#define RMS_FAST_ALPHA 0.99
+#define RMS_SLOW_ALPHA 0.9997
 
-#define RMS_CONSTR 50
-#define RMS_NOISE_CONSTR 50
-
-rms_dc_removal<float, 2> rms0;
-rms_dc_removal<float, 2> rms0_noise;
-
-float snr_voice_active = 2.0;
-float snr_voice_off = 1.0;
-bool voice_active = false;
 bool vox_active = true;
+rms_switch<1> ptt_switch;
+
+#define RMS_CONSTR 30
 
 uint32_t dtmf_ir_time = 0;
 bool dtmf_ir_pending = false;
@@ -38,16 +34,12 @@ uint32_t dtmf_handle_delay = 20;
 
 void ptt_release()
 {
-  pinMode(PTT_PIN, INPUT_PULLUP);
-  digitalWrite(13, 0);
+  digitalWrite(PTT_PIN, 0);
 }
 
 void ptt_press()
 {
-  digitalWrite(PTT_PIN, 0);
-  pinMode(PTT_PIN, OUTPUT);
-  digitalWrite(PTT_PIN, 0);
-  digitalWrite(13, 1);
+  digitalWrite(PTT_PIN, 1);
 }
 
 void noise_rms_calibrate()
@@ -55,7 +47,7 @@ void noise_rms_calibrate()
   for (int i = 0; i < 10000; i++)
   {
     int val = analogRead(0);
-    rms0_noise.update(val);
+    ptt_switch.update(val);
   }
 }
 
@@ -84,18 +76,18 @@ void DTMF_handle()
 
 void setup()
 {
+  pinMode(PTT_PIN, OUTPUT);
   ptt_release();
   Serial.begin(115200);
   DTMF.begin(2, 7, 6, 5, 4);
   attachInterrupt(0, DTMF_IR_handler, RISING);
 
-  rms0.set_casc_alpha(RMS_FAST_ALPHA, 0);
-  rms0.set_casc_alpha(RMS_NORMAL_ALPHA, 1);
-  rms0_noise.set_casc_alpha(RMS_NORMAL_ALPHA, 0);
-  rms0_noise.set_casc_alpha(RMS_SLOW_ALPHA, 1);
-  rms0.set_constr(RMS_CONSTR);
-  rms0_noise.set_constr(RMS_NOISE_CONSTR);
-  //pinMode(10, OUTPUT);
+  dtmf_out.begin();
+
+  ptt_switch.set_main_rms_alpha(RMS_FAST_ALPHA);
+  ptt_switch.set_noise_rms_alpha(RMS_SLOW_ALPHA);
+  ptt_switch.set_main_rms_constr(RMS_CONSTR);
+  ptt_switch.set_noise_rms_constr(RMS_CONSTR);
 
   prot.command_keys[0] = "1";
   prot.command_handlers[0] = command1_handler;
@@ -126,6 +118,9 @@ void setup()
   
   prot.command_keys[9] = "08";
   prot.command_handlers[9] = command_vox_onoff_handler;
+
+  prot.command_keys[10] = "0";
+  prot.command_handlers[10] = command_0;
   
   
   prot.start_seq_handler = command_start_handler;
@@ -150,7 +145,7 @@ void setup()
   delay(100);
 
   Serial.print("Setting Auto Answer... ");
-  Serial.print(call.sendATCommand("ATS0=2"));
+  Serial.print(call.sendATCommand("ATS0=5"));
   delay(100);
 
   Serial.print("Enabling Speech Enhancement... ");
@@ -159,39 +154,22 @@ void setup()
 
   Serial.print("Init SMS... ");
   Serial.println(sms.initSMS()); // Its optional but highly recommended. Some function work with this function.
-  delay(1000);
+  delay(100);
 
   Serial.print("List Unread SMS... ");
   Serial.println(sms.list(true)); // Its optional but highly recommended. Some function work with this function.
-  delay(1000);
+  delay(100);
 
   /*
   Serial.print("SMS to any number... ");
   Serial.println(sms.send("89854864105", "SOS")); // only use ascii chars please
   */ 
-  Serial.print("Calibrating... ");
+  Serial.println("Calibrating... ");
   noise_rms_calibrate();
-  
+
+  Serial.println("Beep");
   tone(10, 300, 1000);
 
-}
-
-void vox_cycle()
-{
-  int val = analogRead(0);
-  if(rms0.getval()/snr_voice_active > rms0_noise.getval() && !voice_active)
-  {
-    ptt_press();
-    voice_active = true;
-  }
-  if(rms0.getval()/snr_voice_off < rms0_noise.getval() && voice_active)
-  {
-    ptt_release();
-    voice_active = false;
-  }
-  
-  rms0.update(val);
-  rms0_noise.update(val);
 }
 
 void loop()
@@ -199,14 +177,18 @@ void loop()
   DTMF_handle();
   prot.handle();
   // do something else
-  if(vox_active)
-    vox_cycle();
-
   
+  int val = analogRead(0);
+  if(vox_active)
+  {
+    ptt_switch.update(val);
+    if(ptt_switch.is_switched_on())
+      ptt_press();
+    if(ptt_switch.is_switched_off())
+      ptt_release();
+  }
   #ifdef LEVELS_DEBUG
-  Serial.print(rms0.getval());
-  Serial.print(" ");
-  Serial.println(rms0_noise.getval());
+  ptt_switch.print_vals();
   #else
   delayMicroseconds(1500);
   #endif

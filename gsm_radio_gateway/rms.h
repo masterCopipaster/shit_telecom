@@ -128,5 +128,113 @@ template <typename ntype, int n = 1> class rms_dc_removal
   }
 };
 
+template <int ncasc = 1> class rms_switch
+{
+  private:
+  bool on = false;
+  bool switch_on = false;
+  bool switch_off = false;
+  float snr_on = 1.7;
+  float snr_off = 1.05;
+  float snr_diff_on = 1;
+  int active_undersample = 20;
+  int undersample_counter = active_undersample - 1;
+  rms_dc_removal<float, ncasc> rms;
+  rms_dc_removal<float, ncasc> rms_noise;
+  
+  public:
+
+  void set_main_rms_alpha(float a)
+  {
+    rms.set_alpha(a);
+  }
+  void set_main_rms_casc_alpha(float a, int i)
+  {
+    rms.set_casc_alpha(a, i);
+  }
+  void set_noise_rms_alpha(float a)
+  {
+    rms_noise.set_alpha(a);
+  }
+  void set_noise_rms_casc_alpha(float a, int i)
+  {
+    rms_noise.set_casc_alpha(a, i);
+  }
+  void update(float v)
+  {
+
+    switch_on = false;
+    switch_off = false;
+    
+    rms.update(v);
+    if(!on)
+      rms_noise.update(v);
+    else
+    {
+      if(!undersample_counter)
+        rms_noise.update(v);
+      undersample_counter = undersample_counter ? undersample_counter - 1 : active_undersample - 1;
+    }
+    
+    if(rms.getval() / snr_on > rms_noise.getval() && rms.getval() - rms_noise.getval() > snr_diff_on  && !on)
+    {
+      on = true;
+      switch_on = true;
+    }
+    
+    if(rms.getval() / snr_off < rms_noise.getval() && on)
+    {
+      on = false;
+      switch_off = true;
+    }
+  }
+
+  void set_snr_on(float v)
+  {
+    snr_on = v;
+  }
+  void set_snr_off(float v)
+  {
+    snr_off = v;
+  }
+  void set_snr_diff_on(float v)
+  {
+    snr_diff_on = v;
+  }
+  void set_active_undersample(int n)
+  {
+    active_undersample = n;
+  }
+
+  void set_main_rms_constr(float c)
+  {
+    rms.set_constr(c);
+  }
+  void set_noise_rms_constr(float c)
+  {
+    rms_noise.set_constr(c);
+  }
+
+  bool ison()
+  {
+    return on;
+  }
+  bool is_switched_on()
+  {
+    return switch_on;
+  }
+  bool is_switched_off()
+  {
+    return switch_off;
+  }
+
+  void print_vals()
+  {
+    Serial.print(rms.getval());
+    Serial.print(" ");
+    Serial.println(rms_noise.getval());
+  }
+  
+};
 
 #endif _RMS_H

@@ -20,7 +20,7 @@ enum
 #define COMMAND_ARG_BUF_LEN 20
 #define COMMAND_END_SYMBOL '#'
 
-#define COMMAND_NUM 10
+#define COMMAND_NUM 20
 
 class DTMF_command_protocol
 {

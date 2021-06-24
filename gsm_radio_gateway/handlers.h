@@ -39,7 +39,7 @@ void command_snr_on_handler(char* c)
   Serial.println("SET SNR ON BORDER");
   noise_rms_calibrate();
   if(strlen(c))
-    snr_voice_active = float(atoi(c))/100;
+    ptt_switch.set_snr_on(float(atoi(c))/100);
   digitalWrite(13, 0);
 }
 
@@ -86,14 +86,14 @@ void command_rssi_handler(char* c)
 void command_set_rms_noise_constr(char* c)
 {
   Serial.println("SET NOISE RMS CONSTRICTION");
-  rms0_noise.set_constr(float(atoi(c)));
+  ptt_switch.set_noise_rms_constr(float(atoi(c)));
   digitalWrite(13, 0);
 }
 
 void command_set_rms_constr(char* c)
 {
   Serial.println("SET VOICE RMS CONSTRICTION");
-  rms0.set_constr(float(atoi(c)));
+  ptt_switch.set_main_rms_constr(float(atoi(c)));
   digitalWrite(13, 0);
 }
 
@@ -102,7 +102,7 @@ void command_snr_off_handler(char* c)
   Serial.println("SET SNR OFF BORDER");
   noise_rms_calibrate();
   if(strlen(c))
-    snr_voice_off = float(atoi(c))/100;
+    ptt_switch.set_snr_off(float(atoi(c))/100);
   digitalWrite(13, 0);
 }
 
@@ -110,6 +110,21 @@ void command_vox_onoff_handler(char* c)
 {
   Serial.println("VOX ONOFF");
   vox_active = !vox_active;
+  digitalWrite(13, 0);
+}
+
+void command_0(char* c)
+{
+  Serial.println("Dtmf out test");
+  dtmf_out.on();
+  delay(10);
+  ptt_press();
+  dtmf_out.write_raw_digit(14);
+  delay(1000);
+  dtmf_out.write_raw_digit(3);
+  delay(1000);
+  dtmf_out.write_raw_digit(31);
+  ptt_release();
   digitalWrite(13, 0);
 }
 #endif 
