@@ -11,6 +11,30 @@ void command1_handler(char* c)
   digitalWrite(13, 0);
 }
 
+void command_sms_handler(char* c)
+{
+  Serial.print("SMS: ");
+  strcpy(sms_prot.coded_buf, c);
+  sms_prot.decode();
+  Serial.write(sms_prot.num_buf, strlen(sms_prot.num_buf));
+  Serial.print(" ");
+  Serial.write(sms_prot.sms_buf, strlen(sms_prot.sms_buf));
+  Serial.println();
+  if(sms_prot.valid)
+  {
+    Serial.println(sms.send(sms_prot.num_buf, sms_prot.sms_buf)); // only use ascii chars please
+  }
+  else
+  {
+    Serial.println("invalid");
+    sms_prot.encode();
+    Serial.write(sms_prot.coded_buf, strlen(sms_prot.coded_buf));
+    Serial.println();
+  }
+  
+  digitalWrite(13, 0);
+}
+
 void command2_handler(char* c)
 {
   Serial.println("HANGOFF");
@@ -118,13 +142,7 @@ void command_0(char* c)
   Serial.println("Dtmf out test");
   dtmf_out.on();
   delay(10);
-  ptt_press();
-  dtmf_out.write_raw_digit(14);
-  delay(1000);
-  dtmf_out.write_raw_digit(3);
-  delay(1000);
-  dtmf_out.write_raw_digit(31);
-  ptt_release();
+  dtmf_out.start_sequence("****0##");
   digitalWrite(13, 0);
 }
 #endif 

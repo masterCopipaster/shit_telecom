@@ -1,36 +1,32 @@
-#include "MT8870.h"
-#include "dtmf_command_protocol.h"
-#include "rms.h"
-#include "ht9200.h"
-
+#include <MT8870.h>
+#include <dtmf_command_protocol.h>
+#include <rms.h>
+#include <ht9200.h>
+#include <protocols.h>
 #include <GSMSimCall.h>
 #include <GSMSimSMS.h>
 #include <SoftwareSerial.h>
 
-MT8870 DTMF;
-DTMF_command_protocol prot;
-
+dtmf_receiver DTMF;
+DTMF_command_protocol <> prot;
+sms_dtmf_protocol<> sms_prot;
 SoftwareSerial SIM800(8, 9);   // RX, TX
 
 GSMSimCall call(SIM800, 12); // GSMSimCall inherit from GSMSim. You can use GSMSim methods with it.
 GSMSimSMS sms(SIM800, 12);
-
-ht9200 dtmf_out(A3, A4, A2);
+dtmf_caller dtmf_out(A3, A4, A2);
 
 //#define LEVELS_DEBUG
 
 #define PTT_PIN 11
 #define RMS_FAST_ALPHA 0.99
-#define RMS_SLOW_ALPHA 0.9997
-
+#define RMS_SLOW_ALPHA 0.999
 bool vox_active = true;
 rms_switch<1> ptt_switch;
 
 #define RMS_CONSTR 30
 
-uint32_t dtmf_ir_time = 0;
-bool dtmf_ir_pending = false;
-uint32_t dtmf_handle_delay = 20;
+String buffer;
 
 void ptt_release()
 {
@@ -44,35 +40,40 @@ void ptt_press()
 
 void noise_rms_calibrate()
 {
-  for (int i = 0; i < 10000; i++)
+  for (int i = 0; i < 1000; i++)
   {
     int val = analogRead(0);
     ptt_switch.update(val);
   }
 }
 
-#include "handlers.h"
-
-void DTMF_IR_handler()
+void incoming_sms_handler()
 {
-  dtmf_ir_time = millis();
-  dtmf_ir_pending = true;
-}
+    if(SIM800.available()) {
+      buffer = SIM800.readString();
+      //Serial.println(buffer);
 
-void DTMF_handle()
-{
-  if (DTMF.available() && dtmf_ir_pending && (millis() - dtmf_ir_time >= dtmf_handle_delay))
-  {
-    char ch = DTMF.read();
+      
+      // This example for how you catch incoming calls.
+      if(buffer.indexOf("+CMTI:") != -1) {
+        //sms.sendATCommand("AT+CMGR=37");
+        
+        Serial.print("SMS Index No... ");
+        int indexno = sms.indexFromSerial(buffer);
+        Serial.println(indexno);
 
-    Serial.print(ch);
-    Serial.println();
+        Serial.print("Who send the message?...");
+        Serial.println(sms.getSenderNo(indexno));
 
-    prot.update(ch);
-    dtmf_ir_pending = false;
+        Serial.print("Read the message... ");
+        Serial.println(sms.readFromSerial(buffer));
+      } else {
+        Serial.println(buffer);
+      }
   }
 }
 
+#include "handlers.h"
 
 void setup()
 {
@@ -80,9 +81,9 @@ void setup()
   ptt_release();
   Serial.begin(115200);
   DTMF.begin(2, 7, 6, 5, 4);
-  attachInterrupt(0, DTMF_IR_handler, RISING);
-
+  DTMF.attachInt(0);
   dtmf_out.begin();
+  buffer.reserve(BUFFER_RESERVE_MEMORY);
 
   ptt_switch.set_main_rms_alpha(RMS_FAST_ALPHA);
   ptt_switch.set_noise_rms_alpha(RMS_SLOW_ALPHA);
@@ -121,6 +122,10 @@ void setup()
 
   prot.command_keys[10] = "0";
   prot.command_handlers[10] = command_0;
+
+  prot.command_keys[11] = "4";
+  prot.command_handlers[11] = command_sms_handler;
+
   
   
   prot.start_seq_handler = command_start_handler;
@@ -135,7 +140,16 @@ void setup()
 
   // Init module...
   call.init(); // use for init module. Use it if you dont have any valid reason.
-
+/*
+  Serial.print("Resetting GSM module... ");
+  Serial.print(call.sendATCommand("ATZ0")); 
+  Serial.print(call.sendATCommand("AT&F")); 
+  delay(100);
+*/    
+  Serial.print("Init SMS... ");
+  Serial.println(sms.initSMS()); // Its optional but highly recommended. Some function work with this function.
+  delay(100);
+  
   Serial.print("Set Phone Function... ");
   Serial.println(call.setPhoneFunc(1));
   delay(100);
@@ -145,19 +159,19 @@ void setup()
   delay(100);
 
   Serial.print("Setting Auto Answer... ");
-  Serial.print(call.sendATCommand("ATS0=5"));
+  Serial.print(call.sendATCommand("ATS0=3"));
   delay(100);
 
   Serial.print("Enabling Speech Enhancement... ");
   Serial.print(call.sendATCommand("AT+SPE=1")); 
   delay(100);
 
-  Serial.print("Init SMS... ");
-  Serial.println(sms.initSMS()); // Its optional but highly recommended. Some function work with this function.
+  Serial.print("Location... ");
+  Serial.print(call.sendATCommand("AT+CIPGSMLOC=1,1")); 
   delay(100);
 
-  Serial.print("List Unread SMS... ");
-  Serial.println(sms.list(true)); // Its optional but highly recommended. Some function work with this function.
+  Serial.print("List SMS... ");
+  Serial.println(sms.list(false)); // Its optional but highly recommended. Some function work with this function.
   delay(100);
 
   /*
@@ -174,8 +188,12 @@ void setup()
 
 void loop()
 {
-  DTMF_handle();
+  DTMF.handle();
+  dtmf_out.handle();
+  if(DTMF.is_symbol_pending())
+    prot.update(DTMF.read_pending_symbol());
   prot.handle();
+  //incoming_sms_handler();
   // do something else
   
   int val = analogRead(0);

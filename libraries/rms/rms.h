@@ -137,7 +137,10 @@ template <int ncasc = 1> class rms_switch
   float snr_on = 1.7;
   float snr_off = 1.05;
   float snr_diff_on = 1;
-  int active_undersample = 20;
+  int active_undersample = 50;
+  unsigned long undersampling_max_time = 5000;
+  unsigned long undersampling_start;
+  bool undersampling = false;
   int undersample_counter = active_undersample - 1;
   rms_dc_removal<float, ncasc> rms;
   rms_dc_removal<float, ncasc> rms_noise;
@@ -165,9 +168,23 @@ template <int ncasc = 1> class rms_switch
 
     switch_on = false;
     switch_off = false;
+
+    if(on && millis() - undersampling_start < undersampling_max_time && !undersampling)
+    {
+      undersampling_start = millis();
+      undersampling = true;
+    }
     
-    rms.update(v);
+    if(millis() - undersampling_start > undersampling_max_time && undersampling)
+      undersampling = false;
+      
     if(!on)
+    {
+      undersampling = false;
+      undersampling_start = millis();
+    }
+    rms.update(v);
+    if(!undersampling)
       rms_noise.update(v);
     else
     {
@@ -215,6 +232,11 @@ template <int ncasc = 1> class rms_switch
     rms_noise.set_constr(c);
   }
 
+  void set_undersampling_max_time(unsigned long t)
+  {
+    undersampling_max_time = t;
+  }
+
   bool ison()
   {
     return on;
@@ -232,7 +254,9 @@ template <int ncasc = 1> class rms_switch
   {
     Serial.print(rms.getval());
     Serial.print(" ");
-    Serial.println(rms_noise.getval());
+    Serial.print(rms_noise.getval());
+    Serial.print(" ");
+    Serial.println(undersampling);
   }
   
 };

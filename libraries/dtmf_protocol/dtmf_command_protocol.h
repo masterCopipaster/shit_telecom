@@ -10,18 +10,18 @@ enum
   COMMAND_END
 };
 
-#define START_SEQ_BUF_LEN 10
-#define START_SEQ_LEN 3
 #define START_SEQ "***"
 
-#define COMMAND_CODE_BUF_LEN 10
-#define CODE_ARG_DELIMITER '#'
-
-#define COMMAND_ARG_BUF_LEN 20
-#define COMMAND_END_SYMBOL '#'
-
-#define COMMAND_NUM 20
-
+template
+<
+int START_SEQ_BUF_LEN = 10,
+int START_SEQ_LEN = 3,
+int COMMAND_CODE_BUF_LEN = 10,
+char CODE_ARG_DELIMITER = '#',
+int COMMAND_ARG_BUF_LEN = 113,
+char COMMAND_END_SYMBOL = '#',
+int COMMAND_NUM = 15
+>
 class DTMF_command_protocol
 {
   private:
@@ -57,8 +57,8 @@ class DTMF_command_protocol
 
     void update(char c)
     {
-      Serial.print("state: ");
-      Serial.println(state);
+      //Serial.print("state: ");
+      //Serial.println(state);
       command_start_time = millis();
       pause_handled = false;
       switch (state)
@@ -72,8 +72,8 @@ class DTMF_command_protocol
           receiving_symbol_ptr++;
           start_seq_ptr = constrain(receiving_symbol_ptr - START_SEQ_LEN, start_seq_buf, start_seq_buf + START_SEQ_BUF_LEN - 2);
 
-          Serial.write(start_seq_buf, strlen(start_seq_buf));
-          Serial.println();
+          //Serial.write(start_seq_buf, strlen(start_seq_buf));
+          //Serial.println();
 
           if (!strncmp(start_seq_ptr, START_SEQ, START_SEQ_LEN))
           {
