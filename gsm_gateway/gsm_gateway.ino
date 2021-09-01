@@ -91,13 +91,13 @@ void setup()
   ptt_switch.set_noise_rms_constr(RMS_CONSTR);
 
   prot.command_keys[0] = "1";
-  prot.command_handlers[0] = command1_handler;
+  prot.command_handlers[0] = command1_handler; //call
   
   prot.command_keys[1] = "2";
-  prot.command_handlers[1] = command2_handler;
+  prot.command_handlers[1] = command2_handler; //hangoff
 
   prot.command_keys[2] = "3";
-  prot.command_handlers[2] = command3_handler;
+  prot.command_handlers[2] = command3_handler; // accept call
 
   prot.command_keys[3] = "01";
   prot.command_handlers[3] = command_snr_on_handler;

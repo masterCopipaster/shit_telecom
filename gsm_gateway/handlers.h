@@ -23,10 +23,12 @@ void command_sms_handler(char* c)
   if(sms_prot.valid)
   {
     Serial.println(sms.send(sms_prot.num_buf, sms_prot.sms_buf)); // only use ascii chars please
+    tone(10, 1000, 600);
   }
   else
   {
     Serial.println("invalid");
+    tone(10, 500, 600);
     sms_prot.encode();
     Serial.write(sms_prot.coded_buf, strlen(sms_prot.coded_buf));
     Serial.println();
