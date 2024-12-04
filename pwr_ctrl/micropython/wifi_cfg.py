@@ -1,14 +1,27 @@
 import network
 import time
 
-connect_order = [("STA", "boyare", "beychelom", 3), ("STA", None, None, 5), ("AP", "MMM_HUITA", None, -1)]
+connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "Redmi Note 10 Pro", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("STA", None, None, 5), ("AP", "MMM_HUITA", "mobila90", 30), ("AP", "MMM_HUITA", None, -1)]
+#connect_order = [("AP", "MMM_HUITA", None, -1)]
 
 WLAN = None
 mod = ['OPEN', 'WEP', 'WPA-PSK' 'WPA2-PSK4', 'WPA/WPA2-PSK']
 
 def try_given_ssid(WLAN, ssid, pswd, timeout):
     print("Trying to connect ssid:{} key:{} timeout:{}".format(ssid, pswd, timeout))
+    
+    found = False
+    
+    for (sc_ssid, bssid, channel, RSSI, authmode, hidden) in WLAN.scan():
+        if ssid == sc_ssid.decode("utf-8"):
+            found = True
+            break
+        
+    if not found:
+        print("NIHT")
+        return False
+        
     WLAN.connect(ssid, pswd)
     if timeout > 0:
         res = False
@@ -45,6 +58,8 @@ def try_ap_connection(ssid, pswd, timeout):
             if res:
                 break
         print("".format("aga" if res else "nea"))
+    else:
+        res = True
     if not res:
         WLAN.active(False)
     return res
@@ -60,7 +75,7 @@ def try_sta_connection(ssid, pswd, timeout):
     else:
         for (ssid, bssid, channel, RSSI, authmode, hidden) in WLAN.scan():
             if authmode == 0:
-                res = try_given_ssid(WLAN, ssid, pswd, timeout)
+                res = try_given_ssid(WLAN, ssid.decode("utf-8"), pswd, timeout)
                 if res:
                     break
     if not res:

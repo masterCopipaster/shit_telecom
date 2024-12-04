@@ -1,11 +1,12 @@
 from machine import ADC, Pin
+import pins_cfg
 
-DIVIDER = 10
+DIVIDER = 11
 
-batPIN = 2
+batPIN = pins_cfg.batPin
 batADC = None
 
-def bat_init():
+def init():
     global batADC, batPIN
     batADC = ADC(batPIN, atten = ADC.ATTN_11DB)
     batADC.width(ADC.WIDTH_12BIT)

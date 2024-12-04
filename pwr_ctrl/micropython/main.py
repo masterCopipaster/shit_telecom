@@ -1,5 +1,14 @@
 import webmorda
 import battery
+import linkstate
+import pwr_ctrl
 
-battery.bat_init()
+linkstate.init()
+battery.init()
+pwr_ctrl.init()
 webmorda.init()
+
+import wifi_cfg
+
+
+
