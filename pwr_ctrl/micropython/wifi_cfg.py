@@ -1,9 +1,11 @@
 import network
 import time
 
-connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "Redmi Note 10 Pro", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
+#connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "Redmi Note 10 Pro", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("STA", None, None, 5), ("AP", "MMM_HUITA", "mobila90", 30), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("AP", "MMM_HUITA", None, -1)]
+connect_order = [("STA", "lehagovnalepeha", "mobila90", -1)]
+#connect_order = [("STA", "P2", None, -1)]
 
 WLAN = None
 mod = ['OPEN', 'WEP', 'WPA-PSK' 'WPA2-PSK4', 'WPA/WPA2-PSK']
@@ -82,10 +84,15 @@ def try_sta_connection(ssid, pswd, timeout):
         WLAN.active(False)
     return res
     
+pm_map = {network.WLAN.PM_PERFORMANCE : "WLAN.PM_PERFORMANCE", network.WLAN.PM_POWERSAVE : "WLAN.PM_POWERSAVE", network.WLAN.PM_NONE : "WLAN.PM_NONE"}
+
+status_map = {network.STAT_IDLE : "STAT_IDLE", network.STAT_CONNECTING : "STAT_CONNECTING", network.STAT_WRONG_PASSWORD : "STAT_WRONG_PASSWORD",
+    network.STAT_NO_AP_FOUND : "STAT_NO_AP_FOUND", network.STAT_GOT_IP : "STAT_GOT_IP"
+}
 
 def get_wlan_config():
     global WLAN
-    return (WLAN.config("ssid"), WLAN.ipconfig("addr4"))
+    return (WLAN.config("ssid"), WLAN.ipconfig("addr4"), status_map[WLAN.status()], pm_map[WLAN.config("pm")])#, WLAN.status("rssi"))
 
 def run_connect_order():
     global WLAN
@@ -99,6 +106,17 @@ def run_connect_order():
         else:
             continue
 
-run_connect_order()
-print(get_wlan_config())
+import _thread
+
+def wifi_cfg_thread():
+    run_connect_order()
+    while 1:
+        print(get_wlan_config())
+        time.sleep(10)
+
+def init():
+    _thread.start_new_thread(wifi_cfg_thread, ())
+    
+
+init()
 
