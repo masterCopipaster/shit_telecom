@@ -1,7 +1,8 @@
 import network
 import time
+import led
 
-#connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "Redmi Note 10 Pro", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
+#connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "lehagovnalepeha", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("STA", None, None, 5), ("AP", "MMM_HUITA", "mobila90", 30), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("AP", "MMM_HUITA", None, -1)]
 connect_order = [("STA", "lehagovnalepeha", "mobila90", -1)]
@@ -92,7 +93,7 @@ status_map = {network.STAT_IDLE : "STAT_IDLE", network.STAT_CONNECTING : "STAT_C
 
 def get_wlan_config():
     global WLAN
-    return (WLAN.config("ssid"), WLAN.ipconfig("addr4"), status_map[WLAN.status()], pm_map[WLAN.config("pm")])#, WLAN.status("rssi"))
+    return (WLAN.config("ssid"), WLAN.ipconfig("addr4"))#, status_map[WLAN.status()])#, pm_map[WLAN.config("pm")])#, WLAN.status("rssi"))
 
 def run_connect_order():
     global WLAN
@@ -111,8 +112,15 @@ import _thread
 def wifi_cfg_thread():
     run_connect_order()
     while 1:
+        if WLAN.active():
+            if WLAN.isconnected():
+                led.led_slow()
+            else:
+                led.led_fast()
+        else:
+            led.led_off()
         print(get_wlan_config())
-        time.sleep(10)
+        time.sleep(1)
 
 def init():
     _thread.start_new_thread(wifi_cfg_thread, ())
