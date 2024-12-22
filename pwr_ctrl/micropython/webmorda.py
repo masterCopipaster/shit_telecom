@@ -20,7 +20,7 @@ def show_battery(request):
 def show_linkstates(request):
     global server
     linkstates = linkstate.make_solution()
-    server.send("\n".join(["{} {}".format(name, state) for (name, state) in linkstates.items()]))
+    server.send("\n".join(["[{}] - [{}] - [{}]".format( 'uplink' if name in linkstate.uplinks else 'downlink' if name in linkstate.links else '', name, state) for (name, state) in linkstates.items()]))
 
 def init():
     global server

@@ -2,10 +2,10 @@ import network
 import time
 import led
 
-#connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "lehagovnalepeha", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
+connect_order = [("STA", "boyare", "beychelom", 3), ("STA", "lehagovnalepeha", "mobila90", 3), ("STA", None, "", 10), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("STA", None, None, 5), ("AP", "MMM_HUITA", "mobila90", 30), ("AP", "MMM_HUITA", None, -1)]
 #connect_order = [("AP", "MMM_HUITA", None, -1)]
-connect_order = [("STA", "lehagovnalepeha", "mobila90", -1)]
+#connect_order = [("STA", "lehagovnalepeha", "mobila90", -1)]
 #connect_order = [("STA", "P2", None, -1)]
 
 WLAN = None
@@ -109,8 +109,16 @@ def run_connect_order():
 
 import _thread
 
+reconnect_timeout = 30
+status_update_time = 1
+state_print_time = 10
+
 def wifi_cfg_thread():
     run_connect_order()
+    last_reconfigure = time.time()
+    #last_status_update = time.time()
+    last_printout = time.time()
+    
     while 1:
         if WLAN.active():
             if WLAN.isconnected():
@@ -119,8 +127,17 @@ def wifi_cfg_thread():
                 led.led_fast()
         else:
             led.led_off()
-        print(get_wlan_config())
-        time.sleep(1)
+            
+        if time.time() - last_printout > state_print_time:
+            print(get_wlan_config())
+            last_printout = time.time()
+            
+        if time.time() - last_reconfigure > reconnect_timeout:
+            if (not WLAN.active()) or (not WLAN.isconnected()):
+                run_connect_order()
+            last_reconfigure = time.time()
+        
+        time.sleep(status_update_time)
 
 def init():
     _thread.start_new_thread(wifi_cfg_thread, ())
